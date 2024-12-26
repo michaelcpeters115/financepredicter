@@ -1,7 +1,7 @@
 import streamlit as st
 import torch
 from transformers import DistilBertForSequenceClassification, DistilBertTokenizer
-from keras.utils import pad_sequences
+from tensorflow.keras.utils import pad_sequences
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
