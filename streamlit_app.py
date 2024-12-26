@@ -8,17 +8,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 import warnings
 
-# Suppress warnings about the pickle module and other future warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-# Set the main color for the app
 MAIN_COLOR = "#28e1ff"
-SENTIMENT_COLOR = "#ffffff"  # White for Sentiment
+SENTIMENT_COLOR = "#ffffff"
+NEGATIVE_COLOR = "#ff6f61"
+NEUTRAL_COLOR = "#ffd700"
+POSITIVE_COLOR = "#61ff61"
 
-# Style and Theme customization
-st.set_page_config(page_title="WealthGPT", layout="wide")  # Default Streamlit icon used
+st.set_page_config(page_title="WealthGPT", layout="wide")
 
-# Custom CSS for matching the branding
 st.markdown(
     f"""
     <style>
@@ -118,22 +117,19 @@ st.markdown(
 )
 
 LABEL_MAP = {0: "Negative", 1: "Neutral", 2: "Positive"}
-MAX_LENGTH = 64  # Max length for sentence encoding
+MAX_LENGTH = 64
 
-# Load the pre-trained model (full model)
 def load_trained_model():
     model = torch.load("sentiment_model.pth", map_location=torch.device('cpu'))
-    model.eval()  # Set model to evaluation mode
+    model.eval()
     return model
 
-# Preprocess input for prediction
 def preprocess_input(input_sentence, tokenizer, max_len=MAX_LENGTH):
     encoded = tokenizer.encode(input_sentence, add_special_tokens=True, max_length=max_len, truncation=True)
     input_ids = pad_sequences([encoded], maxlen=max_len, dtype="long", truncating="post", padding="post")
     attention_masks = [[float(i > 0) for i in seq] for seq in input_ids]
     return torch.tensor(input_ids), torch.tensor(attention_masks)
 
-# Predict sentiment with confidence
 def predict_sentiment(input_sentence, model, tokenizer):
     input_ids, attention_mask = preprocess_input(input_sentence, tokenizer)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -150,23 +146,18 @@ def predict_sentiment(input_sentence, model, tokenizer):
 
     return LABEL_MAP[prediction], confidence
 
-# Streamlit UI
 st.markdown("<div class='title'>WEALTHGPT - AI NEWS CLASSIFIER</div>", unsafe_allow_html=True)
 st.markdown("<div class='subtitle'>Classify news headlines as Negative, Neutral, or Positive.</div>", unsafe_allow_html=True)
 
-# Load the pre-trained model
 if os.path.exists("sentiment_model.pth"):
     model = load_trained_model()
 
-    # Create a session state to store previous analyses
     if "analysis_data" not in st.session_state:
         st.session_state.analysis_data = []
-        st.session_state.sentiment_count = {'Negative': 0, 'Neutral': 0, 'Positive': 0}  # Track counts of each sentiment
+        st.session_state.sentiment_count = {'Negative': 0, 'Neutral': 0, 'Positive': 0}
 
-    # Allow user to input a sentence for prediction
     input_sentence = st.text_area("Enter your sentence:", key="input_sentence", height=100)
 
-    # Add "Analyze" button
     if st.button("Analyze", key="analyze_button"):
         with st.spinner('Analyzing sentence...'):
             if input_sentence:
@@ -174,37 +165,46 @@ if os.path.exists("sentiment_model.pth"):
                 sentiment, confidence = predict_sentiment(input_sentence, model, tokenizer)
                 st.markdown(f"<div class='sentiment-text'>Sentiment: {sentiment} <span class='confidence'>({confidence:.2f}% Confidence)</span></div>", unsafe_allow_html=True)
 
-                # Update sentiment count
                 st.session_state.sentiment_count[sentiment] += 1
 
-                # Add the new sentence and sentiment to the session data
                 st.session_state.analysis_data.insert(0, (input_sentence, sentiment, f"{confidence:.2f}%"))
 
-                # Display the analysis table with added space and a divider
                 st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
                 st.write("### Sentiment Analysis Results:")
                 data = pd.DataFrame(st.session_state.analysis_data, columns=["Sentence", "Sentiment", "Confidence"])
-                with st.expander("View Results", expanded=True):  # Set expanded=True to make it open by default
+                with st.expander("View Results", expanded=True):
                     st.table(data)
 
-                # Add a divider before the graph
                 st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
 
-                # Center the graph using columns, making it 20% smaller
-                col1 = st.columns([1, 3, 1])[1]  # Use the middle column
-                with col1:  # This is where the graph will be placed
-                    fig, ax = plt.subplots(figsize=(5, 3))  # Adjusted size to make the graph smaller
+                col1 = st.columns([1, 3, 1])[1]
+                with col1:
+                    fig, ax = plt.subplots(figsize=(6, 4))
                     sentiments = ['Negative', 'Neutral', 'Positive']
                     counts = [st.session_state.sentiment_count['Negative'], 
                               st.session_state.sentiment_count['Neutral'], 
                               st.session_state.sentiment_count['Positive']]
-                    ax.bar(sentiments, counts, color=MAIN_COLOR)  # Bar color reverted back to original
-                    ax.set_title('Sentiment Distribution', fontsize=16)  # Larger font size
-                    ax.set_ylabel('Frequency', fontsize=12)  # Larger font size
-                    ax.set_yticks(np.arange(0, max(counts) + 1, 1))  # Y-axis increments in integers
-                    ax.set_ylim(0, max(counts) + 1)  # Y-axis limit based on count
-                    st.pyplot(fig)
+                    bar_colors = [NEGATIVE_COLOR, NEUTRAL_COLOR, POSITIVE_COLOR]
+                    bars = ax.bar(sentiments, counts, color=bar_colors, edgecolor="none", width=0.6)
 
+                    for bar in bars:
+                        height = bar.get_height()
+                        ax.text(bar.get_x() + bar.get_width() / 2, height, f'{int(height)}', 
+                                ha='center', va='bottom', fontsize=12, color=SENTIMENT_COLOR)
+
+                    ax.set_title('Sentiment Distribution', fontsize=18, color=SENTIMENT_COLOR, pad=15)
+                    ax.set_ylabel('Frequency', fontsize=14, color=SENTIMENT_COLOR)
+                    ax.set_xlabel('Sentiments', fontsize=14, color=SENTIMENT_COLOR)
+                    ax.tick_params(colors=SENTIMENT_COLOR, labelsize=12)
+                    ax.set_facecolor('#1a2733')
+                    fig.patch.set_facecolor('#0c1b29')
+
+                    ax.spines['top'].set_visible(False)
+                    ax.spines['right'].set_visible(False)
+
+                    ax.set_yticks(range(0, max(counts) + 1))
+                    ax.grid(color='#333', linestyle='--', linewidth=0.5, axis='y')
+                    st.pyplot(fig)
             else:
                 st.write("Please enter a sentence to analyze.")
 else:
