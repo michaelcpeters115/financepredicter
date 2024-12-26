@@ -1,7 +1,6 @@
 streamlit
-torch
-transformers
+transformers==4.31.0
+torch==2.0.1
 numpy
 pandas
 matplotlib
-tensorflow
