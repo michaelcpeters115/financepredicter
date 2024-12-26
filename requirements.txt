@@ -1,7 +1,7 @@
-streamlit==1.23.1
-torch==2.0.1
-transformers==4.31.0
-tensorflow==2.13.0
-numpy==1.25.0
-pandas==1.5.0
-matplotlib==3.7.0
+streamlit
+torch
+transformers
+numpy
+pandas
+matplotlib
+tensorflow
